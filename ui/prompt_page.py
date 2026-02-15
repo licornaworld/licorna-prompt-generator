@@ -9,16 +9,30 @@ class PromptPage(ttk.Frame):
     """
     Page générique pour un des 4 écrans.
     - Mode standard : un champ texte utilisateur + Generate (stub)
-    - Mode Story Content :
+    - Mode template :
       * Target Words
       * Story Highlight
-      * Generate qui remplace {TARGET_WORDS} / {STORY_HIGHLIGHT} dans le prompt base
+      * Generate qui remplace les placeholders selon la section dans le prompt base
       * zone résultat éditable + bouton Copy
     """
     def __init__(self, parent, controller):
         super().__init__(parent, padding=16)
         self.controller = controller
         self.current_key = None
+        self.template_modes = {
+            "story_content": {
+                "field_one_label": "Target Words",
+                "field_two_label": "Story Highlight",
+                "placeholder_one": "{TARGET_WORDS}",
+                "placeholder_two": "{STORY_HIGHLIGHT}",
+            },
+            "characters_descr": {
+                "field_one_label": "Existing Characters",
+                "field_two_label": "Story Content",
+                "placeholder_one": "{EXISTING_CHARACTERS}",
+                "placeholder_two": "{STORY_CONTENT}",
+            },
+        }
 
         header = ttk.Frame(self)
         header.pack(fill="x")
@@ -42,31 +56,33 @@ class PromptPage(ttk.Frame):
 
         self.standard_input.pack(fill="both", expand=True)
 
-        # ---------- Zone d'entrée (Story Content) ----------
-        self.story_input = ttk.Frame(self)
+        # ---------- Zone d'entrée (template) ----------
+        self.template_input = ttk.Frame(self)
 
-        target_row = ttk.Frame(self.story_input)
+        target_row = ttk.Frame(self.template_input)
         target_row.pack(fill="x", pady=(0, 8))
 
-        ttk.Label(target_row, text="Target Words", font=("Segoe UI", 11, "bold")).pack(side="left")
-        self.target_words_var = tk.StringVar()
-        self.target_words_entry = ttk.Entry(target_row, textvariable=self.target_words_var)
-        self.target_words_entry.pack(side="left", fill="x", expand=True, padx=(12, 0))
+        self.field_one_label = ttk.Label(target_row, text="", font=("Segoe UI", 11, "bold"))
+        self.field_one_label.pack(side="left")
+        self.field_one_var = tk.StringVar()
+        self.field_one_entry = ttk.Entry(target_row, textvariable=self.field_one_var)
+        self.field_one_entry.pack(side="left", fill="x", expand=True, padx=(12, 0))
 
-        ttk.Label(self.story_input, text="Story Highlight", font=("Segoe UI", 11, "bold")).pack(anchor="w", pady=(0, 6))
-        self.story_highlight_text = tk.Text(self.story_input, height=8, wrap="word")
-        self.story_highlight_text.pack(fill="both", expand=True)
+        self.field_two_label = ttk.Label(self.template_input, text="", font=("Segoe UI", 11, "bold"))
+        self.field_two_label.pack(anchor="w", pady=(0, 6))
+        self.field_two_text = tk.Text(self.template_input, height=8, wrap="word")
+        self.field_two_text.pack(fill="both", expand=True)
 
-        ttk.Label(self.story_input, text="Generated Prompt", font=("Segoe UI", 11, "bold")).pack(anchor="w", pady=(12, 6))
-        self.generated_prompt_text = tk.Text(self.story_input, height=10, wrap="word")
+        ttk.Label(self.template_input, text="Generated Prompt", font=("Segoe UI", 11, "bold")).pack(anchor="w", pady=(12, 6))
+        self.generated_prompt_text = tk.Text(self.template_input, height=10, wrap="word")
         self.generated_prompt_text.pack(fill="both", expand=True)
 
-        copy_row = ttk.Frame(self.story_input)
+        copy_row = ttk.Frame(self.template_input)
         copy_row.pack(fill="x", pady=(8, 0))
         self.copy_btn = ttk.Button(copy_row, text="Copy", command=self._copy_generated_prompt)
         self.copy_btn.pack(side="right")
 
-        self.story_input.pack_forget()
+        self.template_input.pack_forget()
 
         footer = ttk.Frame(self)
         footer.pack(fill="x", pady=14)
@@ -86,23 +102,27 @@ class PromptPage(ttk.Frame):
         self.input_label.config(text=f"{PAGE_INPUT_LABEL.get(key, 'Input')} :")
 
         self.text.delete("1.0", "end")
-        self.target_words_var.set("")
-        self.story_highlight_text.delete("1.0", "end")
+        self.field_one_var.set("")
+        self.field_two_text.delete("1.0", "end")
         self.generated_prompt_text.delete("1.0", "end")
 
-        is_story_content = key == "story_content"
-        self.preview_btn.pack_forget() if is_story_content else self.preview_btn.pack(side="right", padx=(0, 8))
+        is_template_mode = key in self.template_modes
+        self.preview_btn.pack_forget() if is_template_mode else self.preview_btn.pack(side="right", padx=(0, 8))
 
-        if is_story_content:
+        if is_template_mode:
+            mode = self.template_modes[key]
+            self.field_one_label.config(text=mode["field_one_label"])
+            self.field_two_label.config(text=mode["field_two_label"])
+
             self.standard_input.pack_forget()
-            self.story_input.pack(fill="both", expand=True)
+            self.template_input.pack(fill="both", expand=True)
         else:
-            self.story_input.pack_forget()
+            self.template_input.pack_forget()
             self.standard_input.pack(fill="both", expand=True)
 
     def _on_generate(self):
-        if self.current_key == "story_content":
-            self._generate_story_content_prompt()
+        if self.current_key in self.template_modes:
+            self._generate_template_prompt()
             return
 
         self._generate_stub()
@@ -110,15 +130,19 @@ class PromptPage(ttk.Frame):
     def _generate_stub(self):
         messagebox.showinfo("Generate", "Generate clicked (no action yet).")
 
-    def _generate_story_content_prompt(self):
-        base = self.controller.prompt_bases.get("story_content", "")
-        target_words = self.target_words_var.get().strip()
-        story_highlight = self.story_highlight_text.get("1.0", "end").rstrip("\n")
+    def _generate_template_prompt(self):
+        mode = self.template_modes.get(self.current_key)
+        if not mode:
+            return
+
+        base = self.controller.prompt_bases.get(self.current_key, "")
+        field_one = self.field_one_var.get().strip()
+        field_two = self.field_two_text.get("1.0", "end").rstrip("\n")
 
         generated_prompt = (
             base
-            .replace("{TARGET_WORDS}", target_words)
-            .replace("{STORY_HIGHLIGHT}", story_highlight)
+            .replace(mode["placeholder_one"], field_one)
+            .replace(mode["placeholder_two"], field_two)
         )
 
         self.generated_prompt_text.delete("1.0", "end")
