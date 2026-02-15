@@ -1,0 +1,6 @@
+{
+  "story_content": "You are a professional children's story writer.\n\nYour task:\nWrite a creative, emotionally engaging children’s story based on the Story Highlight provided below.\n\nRequirements:\n- Target word count: {TARGET_WORDS}\n- Age range: 5–8 years old\n- Tone: warm, magical, positive\n- Use simple but rich vocabulary\n- Include dialogue\n- Clear beginning, middle, and ending\n- End with a gentle lesson (not preachy)\n- Avoid scary or dark themes\n- Make the story immersive and imaginative\n\nStory Highlight:\n{STORY_HIGHLIGHT}\n\nNow write the full story.",
+  "characters_descr": "",
+  "landing_img": "",
+  "characters_img": ""
+}
