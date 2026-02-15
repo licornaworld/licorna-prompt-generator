@@ -4,6 +4,7 @@ from tkinter import ttk
 
 from config import APP_TITLE, APP_GEOMETRY
 from storage import load_prompt_bases, save_prompt_bases
+
 from ui.main_menu import MainMenu
 from ui.settings_view import SettingsView
 from ui.prompt_page import PromptPage
